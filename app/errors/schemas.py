@@ -22,6 +22,9 @@ class ErrorSubmitRequest(BaseModel):
     @field_validator("title")
     @classmethod
     def title_not_blank(cls, v: str) -> str:
+        # Null bytes are not valid in text columns and can confuse AI tokenisation.
+        # Strip before the blank check so "\x00" alone is correctly rejected.
+        v = v.replace("\x00", "")
         stripped = v.strip()
         if not stripped:
             raise ValueError("title cannot be blank or whitespace only")
@@ -30,6 +33,7 @@ class ErrorSubmitRequest(BaseModel):
     @field_validator("raw_error")
     @classmethod
     def check_raw_error_size(cls, v: str) -> str:
+        v = v.replace("\x00", "")  # null bytes can corrupt AI processing
         if len(v.encode()) > _MAX_RAW_ERROR_BYTES:
             raise ValueError(
                 f"raw_error exceeds maximum size of {_MAX_RAW_ERROR_BYTES // 1024} KB"

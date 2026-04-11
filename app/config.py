@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     DATABASE_URL: str  # postgresql+asyncpg://user:pass@host:port/db
     DB_POOL_SIZE: int = 5
     DB_MAX_OVERFLOW: int = 10
+    # Recycle connections after this many seconds — prevents stale sockets behind
+    # load balancers or firewalls that silently drop idle TCP connections
+    DB_POOL_RECYCLE: int = 1800
+    # Hard ceiling on any single statement (ms). Guards against runaway queries
+    # holding a pool connection indefinitely. Keep well above longest expected query.
+    DB_STATEMENT_TIMEOUT_MS: int = 30_000
 
     # AI
     ANTHROPIC_API_KEY: str = ""  # empty = AI disabled; raises 503 at call time

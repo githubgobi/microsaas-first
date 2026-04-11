@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import PageParams
@@ -64,12 +64,19 @@ class ErrorLogRepository:
         self, error_id: uuid.UUID, status: ErrorStatus
     ) -> None:
         """Used internally by the analysis module. Raises if the ID is not found
-        — a silent no-op would leave the error stuck in 'analyzing' forever."""
-        error = await self.db.get(ErrorLog, error_id)
-        if not error:
+        — a silent no-op would leave the error stuck in 'analyzing' forever.
+
+        Uses UPDATE … RETURNING instead of GET + SET to avoid a redundant SELECT
+        round-trip on every status transition.
+        """
+        result = await self.db.execute(
+            update(ErrorLog)
+            .where(ErrorLog.id == error_id)
+            .values(status=status)
+            .returning(ErrorLog.id)
+        )
+        if result.scalar_one_or_none() is None:
             raise ValueError(f"ErrorLog {error_id} not found — cannot update status")
-        error.status = status
-        await self.db.flush()
 
     async def delete_by_id_and_user(
         self, error_id: uuid.UUID, user_id: uuid.UUID

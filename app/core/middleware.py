@@ -39,7 +39,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         logger.debug(
             "request_started",
             client=request.client.host if request.client else None,
-            query=str(request.query_params) or None,
+            # Query params intentionally NOT logged — they can contain tokens or
+            # API keys passed by misconfigured clients and would persist in logs.
         )
 
         start = time.perf_counter()
@@ -74,6 +75,16 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
             if response is not None:
                 response.headers["X-Request-ID"] = request_id
+                # Security headers — applied to every response regardless of status.
+                # X-Content-Type-Options: prevents browsers from MIME-sniffing a response
+                #   away from the declared Content-Type (e.g. treating JSON as HTML).
+                # X-Frame-Options: blocks this API from being embedded in an iframe —
+                #   not a primary risk for a JSON API but costs nothing.
+                # Referrer-Policy: suppresses the Referer header on outbound requests
+                #   so paths/tokens in URLs are not leaked to third-party services.
+                response.headers["X-Content-Type-Options"] = "nosniff"
+                response.headers["X-Frame-Options"] = "DENY"
+                response.headers["Referrer-Policy"] = "no-referrer"
 
             structlog.contextvars.clear_contextvars()
 

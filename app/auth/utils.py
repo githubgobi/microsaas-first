@@ -20,7 +20,17 @@ async def hash_password(password: str) -> str:
 
 
 async def verify_password(plain: str, hashed: str) -> bool:
-    return await anyio.to_thread.run_sync(lambda: _pwd_context.verify(plain, hashed))
+    """Runs bcrypt in a thread to avoid blocking the event loop.
+
+    Returns False (never raises) so callers always get a bool regardless of
+    whether `hashed` is a valid bcrypt string. This matters for the dummy-hash
+    path in login: a malformed hash would otherwise raise ValueError inside
+    passlib and produce a 500 instead of the expected 401.
+    """
+    try:
+        return await anyio.to_thread.run_sync(lambda: _pwd_context.verify(plain, hashed))
+    except Exception:
+        return False
 
 
 # --- Access token (JWT) ---

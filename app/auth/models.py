@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -33,6 +33,18 @@ class User(Base):
 
 class RefreshToken(Base):
     __tablename__ = "refresh_tokens"
+    __table_args__ = (
+        # Partial composite index — only indexes rows where revoked = FALSE.
+        # Covers "get active tokens for user" queries (revocation list, session audit).
+        # The index stays small as expired/revoked rows are automatically excluded,
+        # keeping lookups fast even after millions of tokens have been issued.
+        Index(
+            "ix_refresh_tokens_user_active",
+            "user_id",
+            "expires_at",
+            postgresql_where=text("revoked = FALSE"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4

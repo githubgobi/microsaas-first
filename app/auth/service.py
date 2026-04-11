@@ -21,6 +21,13 @@ settings = get_settings()
 # Single message for all login failures — never reveal which part failed
 _INVALID_CREDENTIALS = "Invalid credentials"
 
+# A syntactically valid bcrypt hash used when the email doesn't exist.
+# passlib runs the full KDF against it, keeping the response time identical
+# to a real failed login and preventing user-enumeration via timing.
+# The previous inline truncated hash ($2b$12$...29 chars) caused passlib to
+# raise ValueError → 500, and ran in microseconds → both leaks are now fixed.
+_DUMMY_HASH = "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"
+
 
 class AuthService:
     def __init__(self, db: AsyncSession) -> None:
@@ -43,11 +50,15 @@ class AuthService:
         user = await self.users.get_by_email(data.email)
 
         # Always run verify_password even when user doesn't exist to prevent
-        # timing-based user enumeration attacks
-        dummy_hash = "$2b$12$eImiTXuWVxfM37uY4JANjQ"  # placeholder for constant time
+        # timing-based user enumeration attacks.
+        #
+        # The dummy hash MUST be a syntactically valid bcrypt string so passlib
+        # runs the full KDF (~300 ms), not a fast path that leaks whether the
+        # email exists via response-time difference.
+        # Generated with: passlib.CryptContext(["bcrypt"]).hash("timing-guard")
         password_ok = await verify_password(
             data.password,
-            user.hashed_password if user else dummy_hash,
+            user.hashed_password if user else _DUMMY_HASH,
         )
 
         if not user or not password_ok or not user.is_active:

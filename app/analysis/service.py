@@ -17,6 +17,7 @@ import uuid
 
 import structlog
 from fastapi import BackgroundTasks
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +25,7 @@ from app.analysis.ai_client import AnthropicClient, get_ai_client
 from app.analysis.models import Analysis
 from app.analysis.repository import AnalysisRepository
 from app.analysis.schemas import AnalysisData, AnalysisResultResponse, AnalysisTriggerResponse
+from app.config import get_settings
 from app.core.exceptions import ConflictError, NotFoundError
 from app.database import AsyncSessionFactory
 from app.errors.models import ErrorLog, ErrorStatus
@@ -138,7 +140,6 @@ class AnalysisService:
             )
 
         # Per-user daily rate limit
-        from app.config import get_settings
         settings = get_settings()
         if settings.MAX_ANALYSES_PER_DAY > 0:
             count = await analysis_repo.count_today_by_user(user_id)
@@ -168,8 +169,7 @@ class AnalysisService:
     async def get_result(
         self, error_id: uuid.UUID, user_id: uuid.UUID
     ) -> AnalysisResultResponse:
-        # Single JOIN — one round-trip instead of two
-        from sqlalchemy import select
+        # Single LEFT JOIN — one round-trip; returns error + analysis (if exists)
         result = await self.db.execute(
             select(ErrorLog, Analysis)
             .outerjoin(Analysis, Analysis.error_log_id == ErrorLog.id)
