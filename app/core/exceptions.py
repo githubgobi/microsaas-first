@@ -53,6 +53,11 @@ class ForbiddenError(AppException):
         super().__init__(message, status.HTTP_403_FORBIDDEN)
 
 
+class BadRequestError(AppException):
+    def __init__(self, message: str = "Bad request"):
+        super().__init__(message, status.HTTP_400_BAD_REQUEST)
+
+
 class ServiceUnavailableError(AppException):
     def __init__(self, message: str = "Service unavailable"):
         super().__init__(message, status.HTTP_503_SERVICE_UNAVAILABLE)

@@ -39,6 +39,42 @@ class LoginRequest(BaseModel):
         return v.strip().lower()
 
 
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return v.strip().lower()
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return v.strip().lower()
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("Password must not exceed 72 bytes")
+        return v
+
+
 class RefreshRequest(BaseModel):
     refresh_token: str
 
@@ -53,6 +89,7 @@ class UserResponse(BaseModel):
     id: uuid.UUID
     email: str
     is_active: bool
+    is_verified: bool
     created_at: datetime
 
     model_config = {"from_attributes": True}

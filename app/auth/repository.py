@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import RefreshToken, User
@@ -24,6 +24,16 @@ class UserRepository:
         self.db.add(user)
         await self.db.flush()  # get the generated id without committing
         return user
+
+    async def set_verified(self, user_id: uuid.UUID) -> None:
+        await self.db.execute(
+            update(User).where(User.id == user_id).values(is_verified=True)
+        )
+
+    async def update_password(self, user_id: uuid.UUID, hashed_password: str) -> None:
+        await self.db.execute(
+            update(User).where(User.id == user_id).values(hashed_password=hashed_password)
+        )
 
 
 class RefreshTokenRepository:
@@ -53,6 +63,15 @@ class RefreshTokenRepository:
     async def revoke(self, token: RefreshToken) -> None:
         token.revoked = True
         await self.db.flush()
+
+    async def revoke_all_for_user(self, user_id: uuid.UUID) -> None:
+        """Revoke every active refresh token for the user.
+        Called on password reset to force logout from all devices."""
+        await self.db.execute(
+            update(RefreshToken)
+            .where(RefreshToken.user_id == user_id, RefreshToken.revoked.is_(False))
+            .values(revoked=True)
+        )
 
     async def delete_expired(self) -> int:
         """Purge expired or revoked tokens. Call periodically (e.g. nightly cron).

@@ -4,11 +4,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.auth.schemas import (
+    ForgotPasswordRequest,
     LoginRequest,
     RefreshRequest,
     RegisterRequest,
+    ResendVerificationRequest,
+    ResetPasswordRequest,
     TokenResponse,
     UserResponse,
+    VerifyEmailRequest,
 )
 from app.auth.service import AuthService
 from app.core.rate_limit import limiter
@@ -43,3 +47,41 @@ async def logout(data: RefreshRequest, db: AsyncSession = Depends(get_db)):
 @router.get("/me", response_model=UserResponse)
 async def me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.post("/verify-email", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("10/minute")
+async def verify_email(
+    request: Request, data: VerifyEmailRequest, db: AsyncSession = Depends(get_db)
+) -> None:
+    await AuthService(db).verify_email(data.token)
+
+
+@router.post("/resend-verification", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("3/minute")  # low cap — sending email is expensive and abuse-prone
+async def resend_verification(
+    request: Request,
+    data: ResendVerificationRequest,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await AuthService(db).resend_verification(data.email)
+
+
+@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("3/minute")  # low cap — sending email is expensive and abuse-prone
+async def forgot_password(
+    request: Request,
+    data: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await AuthService(db).forgot_password(data.email)
+
+
+@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("5/minute")
+async def reset_password(
+    request: Request,
+    data: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await AuthService(db).reset_password(data)

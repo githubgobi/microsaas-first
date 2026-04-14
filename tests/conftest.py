@@ -14,7 +14,7 @@ Design decisions:
 """
 import os
 from collections.abc import AsyncGenerator
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -69,7 +69,9 @@ async def truncate_tables():
     """
     async with _engine.begin() as conn:
         await conn.execute(
-            text("TRUNCATE users, refresh_tokens, error_logs, analyses CASCADE")
+            text(
+                "TRUNCATE users, refresh_tokens, error_logs, analyses, subscriptions CASCADE"
+            )
         )
 
 
@@ -121,10 +123,11 @@ async def db() -> AsyncGenerator[AsyncSession, None]:
 @pytest.fixture
 async def auth_headers(client: AsyncClient) -> dict[str, str]:
     """Registers the primary test user and returns Bearer auth headers."""
-    resp = await client.post(
-        "/auth/register",
-        json={"email": "user@test.com", "password": "password123"},
-    )
+    with patch("app.auth.service.send_verification_email", new_callable=AsyncMock):
+        resp = await client.post(
+            "/auth/register",
+            json={"email": "user@test.com", "password": "password123"},
+        )
     assert resp.status_code == 201, resp.text
     return {"Authorization": f"Bearer {resp.json()['access_token']}"}
 
@@ -132,10 +135,11 @@ async def auth_headers(client: AsyncClient) -> dict[str, str]:
 @pytest.fixture
 async def second_auth_headers(client: AsyncClient) -> dict[str, str]:
     """Registers a second user — used for ownership isolation tests."""
-    resp = await client.post(
-        "/auth/register",
-        json={"email": "other@test.com", "password": "password123"},
-    )
+    with patch("app.auth.service.send_verification_email", new_callable=AsyncMock):
+        resp = await client.post(
+            "/auth/register",
+            json={"email": "other@test.com", "password": "password123"},
+        )
     assert resp.status_code == 201, resp.text
     return {"Authorization": f"Bearer {resp.json()['access_token']}"}
 

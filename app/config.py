@@ -31,6 +31,25 @@ class Settings(BaseSettings):
     # holding a pool connection indefinitely. Keep well above longest expected query.
     DB_STATEMENT_TIMEOUT_MS: int = 30_000
 
+    # Stripe billing
+    BILLING_ENABLED: bool = False  # set to true in production with Stripe keys configured
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+    STRIPE_PRO_PRICE_ID: str = ""  # price_xxx from the Stripe dashboard
+
+    # Email verification
+    # Leave SMTP_HOST empty to skip sending and log the verification URL instead (dev mode).
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = "noreply@example.com"
+    SMTP_TLS: bool = True
+    VERIFICATION_TOKEN_EXPIRE_HOURS: int = 24
+    PASSWORD_RESET_TOKEN_EXPIRE_HOURS: int = 1  # short window — reset links are sensitive
+    # Frontend URL used to build email links
+    FRONTEND_URL: str = "http://localhost:3000"
+
     # AI
     ANTHROPIC_API_KEY: str = ""  # empty = AI disabled; raises 503 at call time
     AI_MODEL: str = "claude-sonnet-4-6"

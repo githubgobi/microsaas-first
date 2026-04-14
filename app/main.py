@@ -9,6 +9,7 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from app.analysis.router import router as analysis_router
 from app.auth.router import router as auth_router
+from app.billing.router import router as billing_router
 from app.errors.router import router as errors_router
 from app.history.router import router as history_router
 from app.config import get_settings
@@ -70,6 +71,7 @@ def create_app() -> FastAPI:
     # Analysis routes nest under /errors (POST /errors/{id}/analyze, GET /errors/{id}/analysis)
     app.include_router(analysis_router, prefix="/errors", tags=["analysis"])
     app.include_router(history_router, prefix="/history", tags=["history"])
+    app.include_router(billing_router, prefix="/billing", tags=["billing"])
 
     @app.get("/health", tags=["system"])
     async def health():
