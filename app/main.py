@@ -55,10 +55,13 @@ def create_app() -> FastAPI:
         allow_headers=["Authorization", "Content-Type"],
     )
     app.add_middleware(RequestLoggingMiddleware)
-    app.add_middleware(SlowAPIMiddleware)
 
+    # limiter state must always be present — @limiter.limit() decorators access
+    # request.app.state.limiter regardless of whether the middleware is mounted.
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    if settings.RATE_LIMIT_ENABLED:
+        app.add_middleware(SlowAPIMiddleware)
 
     register_exception_handlers(app)
 

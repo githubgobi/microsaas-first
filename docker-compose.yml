@@ -44,5 +44,25 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
 
+  test:
+    build: .
+    # Run as root so pip can install test-only deps into site-packages at runtime.
+    # This service is never deployed — the non-root appuser applies to app/migrate only.
+    user: root
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements-test.txt -q &&
+             python scripts/create_test_db.py &&
+             pytest -v"
+    env_file:
+      - .env
+    environment:
+      TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/saas_test
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/saas_db
+      RATE_LIMIT_ENABLED: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
 volumes:
   postgres_data:

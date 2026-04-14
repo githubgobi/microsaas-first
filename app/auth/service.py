@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.repository import RefreshTokenRepository, UserRepository
 from app.auth.schemas import LoginRequest, RegisterRequest, TokenResponse
 from app.auth.utils import (
+    DUMMY_HASH as _DUMMY_HASH,
     create_access_token,
     create_refresh_token,
     hash_password,
@@ -20,13 +21,6 @@ settings = get_settings()
 
 # Single message for all login failures — never reveal which part failed
 _INVALID_CREDENTIALS = "Invalid credentials"
-
-# A syntactically valid bcrypt hash used when the email doesn't exist.
-# passlib runs the full KDF against it, keeping the response time identical
-# to a real failed login and preventing user-enumeration via timing.
-# The previous inline truncated hash ($2b$12$...29 chars) caused passlib to
-# raise ValueError → 500, and ran in microseconds → both leaks are now fixed.
-_DUMMY_HASH = "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"
 
 
 class AuthService:

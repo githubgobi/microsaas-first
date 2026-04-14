@@ -10,7 +10,17 @@ from app.config import JWT_ALGORITHM, get_settings
 
 settings = get_settings()
 
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# bcrypt__truncate_error=False: passlib silently truncates passwords >72 bytes
+# rather than raising. Our schema validator rejects them before they reach here,
+# so this is a belt-and-suspenders guard — it also prevents bcrypt>=4.0 from
+# firing its own truncation error before passlib's logic runs.
+_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__truncate_error=False)
+
+# Generated once at import time — valid bcrypt hash used as a timing guard in login
+# when the email doesn't exist. Running the full KDF prevents user-enumeration via
+# response-time differences. Never hardcode a literal hash string; passlib must
+# generate it so the format is always valid for the active bcrypt variant.
+DUMMY_HASH: str = _pwd_context.hash("timing-guard")
 
 
 # --- Password (async wrappers — bcrypt is CPU-bound; must not block event loop) ---

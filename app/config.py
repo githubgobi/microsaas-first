@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     # App
     APP_NAME: str = "AI Error Debugger"
     DEBUG: bool = False
+    RATE_LIMIT_ENABLED: bool = True  # set to false in tests / local dev
 
     # Security — ALGORITHM is intentionally NOT env-configurable (algorithm confusion attacks)
     SECRET_KEY: str
