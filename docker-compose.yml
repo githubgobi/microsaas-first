@@ -44,6 +44,21 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules       # keep container node_modules isolated
+    environment:
+      VITE_API_URL: http://localhost:8000
+    depends_on:
+      - app
+    restart: unless-stopped
+
   test:
     build: .
     # Run as root so pip can install test-only deps into site-packages at runtime.
